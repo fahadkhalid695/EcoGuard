@@ -1,0 +1,11 @@
+"filename", "language", "TypeScript", "comment", "blank", "total"
+"c:\Users\dell\Downloads\project\src\hooks\useAuth.ts", "TypeScript", -81, -3, -14, -98
+"c:\Users\dell\Downloads\project\src\services\aiService.ts", "TypeScript", 371, 15, 85, 471
+"c:\Users\dell\Downloads\project\src\services\authService.ts", "TypeScript", 322, 20, 60, 402
+"c:\Users\dell\Downloads\project\src\services\databaseService.ts", "TypeScript", 139, 10, 21, 170
+"c:\Users\dell\Downloads\project\src\services\hardwareService.ts", "TypeScript", 212, 15, 30, 257
+"c:\Users\dell\Downloads\project\src\services\securityService.ts", "TypeScript", 205, 22, 52, 279
+"c:\Users\dell\Downloads\project\src\services\sensorService.ts", "TypeScript", 347, 9, 41, 397
+"c:\Users\dell\Downloads\project\src\services\stripeService.ts", "TypeScript", 124, 5, 24, 153
+"c:\Users\dell\Downloads\project\src\services\supabaseClient.ts", "TypeScript", 7, 0, 3, 10
+"Total", "-", 1646, 93, 302, 2041

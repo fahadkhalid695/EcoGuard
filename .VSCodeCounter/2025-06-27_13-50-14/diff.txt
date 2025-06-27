@@ -1,0 +1,36 @@
+Date : 2025-06-27 13:50:14
+Directory : c:\Users\dell\Downloads\project\src\types
+Total : 9 files,  -1655 codes, -96 comments, -311 blanks, all -2062 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| TypeScript |          9 |     -1,655 |        -96 |       -311 |     -2,062 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                            | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                               |          9 |     -1,655 |        -96 |       -311 |     -2,062 |
+| . (Files)                                                       |          1 |         72 |          0 |          5 |         77 |
+| ..                                                              |          8 |     -1,727 |        -96 |       -316 |     -2,139 |
+| ..\services                                                     |          8 |     -1,727 |        -96 |       -316 |     -2,139 |
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                        | language   | code       | comment    | blank      | total      |
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\Users\dell\Downloads\project\src\services\aiService.ts       | TypeScript |       -371 |        -15 |        -85 |       -471 |
+| c:\Users\dell\Downloads\project\src\services\authService.ts     | TypeScript |       -322 |        -20 |        -60 |       -402 |
+| c:\Users\dell\Downloads\project\src\services\databaseService.ts | TypeScript |       -139 |        -10 |        -21 |       -170 |
+| c:\Users\dell\Downloads\project\src\services\hardwareService.ts | TypeScript |       -212 |        -15 |        -30 |       -257 |
+| c:\Users\dell\Downloads\project\src\services\securityService.ts | TypeScript |       -205 |        -22 |        -52 |       -279 |
+| c:\Users\dell\Downloads\project\src\services\sensorService.ts   | TypeScript |       -347 |         -9 |        -41 |       -397 |
+| c:\Users\dell\Downloads\project\src\services\stripeService.ts   | TypeScript |       -124 |         -5 |        -24 |       -153 |
+| c:\Users\dell\Downloads\project\src\services\supabaseClient.ts  | TypeScript |         -7 |          0 |         -3 |        -10 |
+| c:\Users\dell\Downloads\project\src\types\sensor.ts             | TypeScript |         72 |          0 |          5 |         77 |
+| Total                                                           |            |     -1,655 |        -96 |       -311 |     -2,062 |
++-----------------------------------------------------------------+------------+------------+------------+------------+------------+
