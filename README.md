@@ -862,7 +862,7 @@ npm run test:performance
 
 <div align="center">
 
-[![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/your-username/ecoguard-pro/discussions)
+[![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fahadkhalid695/ecoguard-pro/discussions)
 [![Documentation](https://img.shields.io/badge/Docs-Read_More-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://docs.ecoguard-pro.com)
 
 **📧 Email**: fahadkhalid695@gmail.com  
