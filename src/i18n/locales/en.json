@@ -1,0 +1,118 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "sensors": "Sensors",
+    "alerts": "Alerts",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "profile": "Profile",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "title": "Environmental Dashboard",
+    "overview": "System Overview",
+    "totalSensors": "Total Sensors",
+    "onlineSensors": "Online Sensors",
+    "activeAlerts": "Active Alerts",
+    "systemUptime": "System Uptime",
+    "recentReadings": "Recent Readings",
+    "quickStats": "Quick Statistics"
+  },
+  "sensors": {
+    "title": "Sensor Management",
+    "addSensor": "Add New Sensor",
+    "sensorName": "Sensor Name",
+    "sensorType": "Sensor Type",
+    "location": "Location",
+    "status": "Status",
+    "batteryLevel": "Battery Level",
+    "lastReading": "Last Reading",
+    "calibrationDate": "Calibration Date",
+    "maintenanceDate": "Next Maintenance",
+    "types": {
+      "temperature": "Temperature",
+      "humidity": "Humidity",
+      "co2": "CO2",
+      "voc": "VOC",
+      "pm25": "PM2.5",
+      "pm10": "PM10",
+      "light": "Light",
+      "sound": "Sound",
+      "motion": "Motion",
+      "energy": "Energy"
+    },
+    "status": {
+      "online": "Online",
+      "offline": "Offline",
+      "maintenance": "Maintenance"
+    }
+  },
+  "alerts": {
+    "title": "Alert Management",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "types": {
+      "threshold": "Threshold",
+      "anomaly": "Anomaly",
+      "maintenance": "Maintenance",
+      "connectivity": "Connectivity"
+    },
+    "acknowledge": "Acknowledge",
+    "resolve": "Resolve",
+    "acknowledged": "Acknowledged",
+    "resolved": "Resolved",
+    "pending": "Pending"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "organization": "Organization",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me",
+    "loginSuccess": "Login successful",
+    "loginError": "Invalid email or password",
+    "registerSuccess": "Registration successful",
+    "registerError": "Registration failed"
+  },
+  "units": {
+    "celsius": "°C",
+    "fahrenheit": "°F",
+    "percent": "%",
+    "ppm": "ppm",
+    "ppb": "ppb",
+    "ugm3": "μg/m³",
+    "lux": "lux",
+    "db": "dB",
+    "kw": "kW",
+    "detected": "detected"
+  },
+  "quality": {
+    "excellent": "Excellent",
+    "good": "Good",
+    "moderate": "Moderate",
+    "poor": "Poor"
+  }
+}

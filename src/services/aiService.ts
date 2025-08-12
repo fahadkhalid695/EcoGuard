@@ -1,11 +1,54 @@
 import { SensorReading, Sensor, Prediction, AIModel } from '../types/sensor';
+import { apiService } from './apiService';
+
+interface MLModelConfig {
+  windowSize: number;
+  threshold: number;
+  minDataPoints: number;
+  features: string[];
+}
+
+interface AnomalyResult {
+  isAnomaly: boolean;
+  score: number;
+  expectedValue: number;
+  actualValue: number;
+  confidence: number;
+}
+
+interface MaintenancePrediction {
+  needsMaintenance: boolean;
+  estimatedDays: number;
+  confidence: number;
+  reasons: string[];
+  priority: 'low' | 'medium' | 'high' | 'critical';
+}
+
+interface PatternAnalysis {
+  trend: 'increasing' | 'decreasing' | 'stable';
+  seasonality: boolean;
+  cyclePeriod?: number;
+  forecast: number[];
+  confidence: number;
+}
+
+interface OptimizationRecommendation {
+  type: 'energy' | 'maintenance' | 'performance';
+  description: string;
+  impact: number;
+  effort: 'low' | 'medium' | 'high';
+  savings: number;
+}
 
 class AIService {
   private models: Map<string, AIModel> = new Map();
   private predictions: Prediction[] = [];
+  private modelConfigs: Map<string, MLModelConfig> = new Map();
+  private trainingData: Map<string, SensorReading[]> = new Map();
 
   constructor() {
     this.initializeModels();
+    this.initializeModelConfigs();
   }
 
   private initializeModels() {
@@ -49,421 +92,630 @@ class AIService {
     });
   }
 
-  // Predictive Maintenance
-  public predictMaintenanceNeeds(sensor: Sensor, readings: SensorReading[]): Prediction {
-    const model = this.models.get('predictive-maintenance-v1')!;
-    
-    // Simulate AI analysis
-    const recentReadings = readings.slice(-20);
-    const avgValue = recentReadings.reduce((sum, r) => sum + r.value, 0) / recentReadings.length;
-    const variance = this.calculateVariance(recentReadings.map(r => r.value));
-    
-    // Simple heuristic for demonstration
-    let maintenanceRisk = 0;
-    let daysUntilMaintenance = 30;
-    
-    if (sensor.batteryLevel && sensor.batteryLevel < 20) {
-      maintenanceRisk += 0.4;
-      daysUntilMaintenance = Math.min(daysUntilMaintenance, 7);
-    }
-    
-    if (variance > avgValue * 0.3) {
-      maintenanceRisk += 0.3;
-      daysUntilMaintenance = Math.min(daysUntilMaintenance, 14);
-    }
-    
-    const daysSinceCalibration = Math.floor(
-      (Date.now() - sensor.calibrationDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    
-    if (daysSinceCalibration > 90) {
-      maintenanceRisk += 0.2;
-      daysUntilMaintenance = Math.min(daysUntilMaintenance, 21);
+  private initializeModelConfigs() {
+    this.modelConfigs.set('predictive-maintenance-v1', {
+      windowSize: 168, // 7 days of hourly data
+      threshold: 0.7,
+      minDataPoints: 50,
+      features: ['value', 'quality', 'batteryLevel', 'readingFrequency']
+    });
+
+    this.modelConfigs.set('anomaly-detection-v1', {
+      windowSize: 24, // 24 hours
+      threshold: 0.8,
+      minDataPoints: 20,
+      features: ['value', 'timestamp', 'quality']
+    });
+
+    this.modelConfigs.set('pattern-recognition-v1', {
+      windowSize: 720, // 30 days of hourly data
+      threshold: 0.6,
+      minDataPoints: 100,
+      features: ['value', 'timestamp', 'seasonality']
+    });
+
+    this.modelConfigs.set('optimization-v1', {
+      windowSize: 168, // 7 days
+      threshold: 0.75,
+      minDataPoints: 50,
+      features: ['value', 'efficiency', 'usage_pattern']
+    });
+  }
+
+  // 🔧 PREDICTIVE MAINTENANCE
+  public async predictMaintenance(sensor: Sensor, readings: SensorReading[]): Promise<MaintenancePrediction> {
+    if (readings.length < 10) {
+      return {
+        needsMaintenance: false,
+        estimatedDays: 365,
+        confidence: 0.1,
+        reasons: ['Insufficient data for prediction'],
+        priority: 'low'
+      };
     }
 
-    const prediction: Prediction = {
-      id: `pred-${Date.now()}`,
-      modelId: model.id,
-      sensorId: sensor.id,
-      type: 'maintenance',
-      prediction: {
-        risk: Math.min(maintenanceRisk, 1),
-        estimatedDays: daysUntilMaintenance,
-        reasons: this.getMaintenanceReasons(sensor, variance, avgValue)
-      },
-      confidence: model.accuracy,
-      timestamp: new Date(),
-      validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    };
+    const features = this.extractMaintenanceFeatures(sensor, readings);
+    const prediction = this.runMaintenanceModel(features);
 
-    this.predictions.push(prediction);
     return prediction;
   }
 
-  // Anomaly Detection
-  public detectAnomalies(readings: SensorReading[]): Prediction[] {
-    const model = this.models.get('anomaly-detection-v1')!;
-    const anomalies: Prediction[] = [];
+  private extractMaintenanceFeatures(sensor: Sensor, readings: SensorReading[]) {
+    const recentReadings = readings.slice(-168); // Last 7 days
     
-    if (readings.length < 10) return anomalies;
+    // Calculate feature metrics
+    const readingFrequency = this.calculateReadingFrequency(recentReadings);
+    const qualityTrend = this.calculateQualityTrend(recentReadings);
+    const valueDrift = this.calculateValueDrift(recentReadings);
+    const batteryDecline = this.calculateBatteryDecline(sensor, recentReadings);
 
-    const recentReadings = readings.slice(-20);
-    const mean = recentReadings.reduce((sum, r) => sum + r.value, 0) / recentReadings.length;
-    const stdDev = Math.sqrt(this.calculateVariance(recentReadings.map(r => r.value)));
-    
-    // Check for outliers (values beyond 2 standard deviations)
-    const latestReading = readings[readings.length - 1];
-    const zScore = Math.abs((latestReading.value - mean) / stdDev);
-    
-    if (zScore > 2) {
-      const anomaly: Prediction = {
-        id: `anomaly-${Date.now()}`,
-        modelId: model.id,
-        sensorId: latestReading.sensorId,
-        type: 'anomaly',
-        prediction: {
-          type: 'statistical_outlier',
-          severity: zScore > 3 ? 'high' : 'medium',
-          value: latestReading.value,
-          expectedRange: [mean - 2 * stdDev, mean + 2 * stdDev],
-          zScore: zScore
-        },
-        confidence: model.accuracy,
-        timestamp: new Date(),
-        validUntil: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-      };
+    return {
+      readingFrequency,
+      qualityTrend,
+      valueDrift,
+      batteryDecline,
+      sensorAge: this.calculateSensorAge(sensor),
+      lastCalibration: this.daysSinceCalibration(sensor)
+    };
+  }
+
+  private runMaintenanceModel(features: any): MaintenancePrediction {
+    // Simplified ML model - in production, use TensorFlow.js or similar
+    let riskScore = 0;
+    const reasons: string[] = [];
+
+    // Battery risk
+    if (features.batteryDecline > 0.1) {
+      riskScore += 0.3;
+      reasons.push(`Battery declining at ${(features.batteryDecline * 100).toFixed(1)}% per day`);
+    }
+
+    // Quality degradation
+    if (features.qualityTrend < -0.2) {
+      riskScore += 0.25;
+      reasons.push('Sensor quality degrading over time');
+    }
+
+    // Reading frequency issues
+    if (features.readingFrequency < 0.8) {
+      riskScore += 0.2;
+      reasons.push('Irregular reading frequency detected');
+    }
+
+    // Calibration overdue
+    if (features.lastCalibration > 90) {
+      riskScore += 0.15;
+      reasons.push(`Calibration overdue by ${features.lastCalibration - 90} days`);
+    }
+
+    // Sensor age factor
+    if (features.sensorAge > 365) {
+      riskScore += 0.1;
+      reasons.push('Sensor approaching end of recommended lifespan');
+    }
+
+    const needsMaintenance = riskScore > 0.6;
+    const estimatedDays = Math.max(1, Math.floor(30 * (1 - riskScore)));
+    const confidence = Math.min(0.95, 0.5 + (riskScore * 0.5));
+
+    let priority: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    if (riskScore > 0.9) priority = 'critical';
+    else if (riskScore > 0.75) priority = 'high';
+    else if (riskScore > 0.6) priority = 'medium';
+
+    return {
+      needsMaintenance,
+      estimatedDays,
+      confidence,
+      reasons,
+      priority
+    };
+  }
+
+  // 🚨 ANOMALY DETECTION
+  public async detectAnomalies(sensorId: string, readings: SensorReading[]): Promise<AnomalyResult[]> {
+    if (readings.length < 20) {
+      return [];
+    }
+
+    const anomalies: AnomalyResult[] = [];
+    const windowSize = 24; // 24-hour window
+
+    for (let i = windowSize; i < readings.length; i++) {
+      const window = readings.slice(i - windowSize, i);
+      const currentReading = readings[i];
       
-      anomalies.push(anomaly);
-      this.predictions.push(anomaly);
+      const anomaly = this.detectSingleAnomaly(window, currentReading);
+      if (anomaly.isAnomaly) {
+        anomalies.push(anomaly);
+      }
     }
 
     return anomalies;
   }
 
-  // Pattern Recognition
-  public recognizePatterns(readings: SensorReading[]): Prediction {
-    const model = this.models.get('pattern-recognition-v1')!;
+  private detectSingleAnomaly(historicalData: SensorReading[], currentReading: SensorReading): AnomalyResult {
+    // Statistical anomaly detection using Z-score and IQR methods
+    const values = historicalData.map(r => r.value);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const stdDev = Math.sqrt(values.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / values.length);
     
-    if (readings.length < 24) {
-      return this.createEmptyPrediction(model.id, readings[0]?.sensorId || '', 'pattern');
+    // Z-score method
+    const zScore = Math.abs((currentReading.value - mean) / stdDev);
+    const zThreshold = 2.5; // 2.5 standard deviations
+    
+    // IQR method
+    const sortedValues = [...values].sort((a, b) => a - b);
+    const q1 = sortedValues[Math.floor(sortedValues.length * 0.25)];
+    const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)];
+    const iqr = q3 - q1;
+    const lowerBound = q1 - 1.5 * iqr;
+    const upperBound = q3 + 1.5 * iqr;
+    
+    const isOutlierIQR = currentReading.value < lowerBound || currentReading.value > upperBound;
+    const isOutlierZ = zScore > zThreshold;
+    
+    const isAnomaly = isOutlierIQR && isOutlierZ;
+    const score = Math.min(1, zScore / 4); // Normalize to 0-1
+    const confidence = isAnomaly ? Math.min(0.95, score) : 0;
+
+    return {
+      isAnomaly,
+      score,
+      expectedValue: mean,
+      actualValue: currentReading.value,
+      confidence
+    };
+  }
+
+  // 📈 PATTERN RECOGNITION
+  public async analyzePatterns(sensorId: string, readings: SensorReading[]): Promise<PatternAnalysis> {
+    if (readings.length < 100) {
+      return {
+        trend: 'stable',
+        seasonality: false,
+        forecast: [],
+        confidence: 0.1
+      };
     }
 
-    const hourlyAverages = this.calculateHourlyAverages(readings);
-    const patterns = this.identifyPatterns(hourlyAverages);
+    const values = readings.map(r => r.value);
+    const timestamps = readings.map(r => new Date(r.timestamp).getTime());
 
-    const prediction: Prediction = {
-      id: `pattern-${Date.now()}`,
-      modelId: model.id,
-      sensorId: readings[0].sensorId,
-      type: 'pattern',
-      prediction: {
-        patterns: patterns,
-        peakHours: this.findPeakHours(hourlyAverages),
-        trends: this.analyzeTrends(readings),
-        seasonality: this.detectSeasonality(readings)
-      },
-      confidence: model.accuracy,
-      timestamp: new Date(),
-      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    };
-
-    this.predictions.push(prediction);
-    return prediction;
-  }
-
-  // Energy Optimization
-  public optimizeEnergyUsage(energyReadings: SensorReading[], occupancyReadings: SensorReading[]): Prediction {
-    const model = this.models.get('optimization-v1')!;
+    // Trend analysis using linear regression
+    const trend = this.calculateTrend(values, timestamps);
     
-    const energyPattern = this.calculateHourlyAverages(energyReadings);
-    const occupancyPattern = this.calculateHourlyAverages(occupancyReadings);
+    // Seasonality detection
+    const seasonality = this.detectSeasonality(values);
     
-    const optimizations = this.calculateOptimizations(energyPattern, occupancyPattern);
+    // Simple forecasting using moving average and trend
+    const forecast = this.generateForecast(values, trend, 24); // 24-hour forecast
 
-    const prediction: Prediction = {
-      id: `optimization-${Date.now()}`,
-      modelId: model.id,
-      sensorId: energyReadings[0]?.sensorId || '',
-      type: 'optimization',
-      prediction: {
-        currentUsage: energyReadings[energyReadings.length - 1]?.value || 0,
-        optimizedUsage: optimizations.optimizedUsage,
-        potentialSavings: optimizations.potentialSavings,
-        recommendations: optimizations.recommendations
-      },
-      confidence: model.accuracy,
-      timestamp: new Date(),
-      validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    };
-
-    this.predictions.push(prediction);
-    return prediction;
-  }
-
-  // Behavioral Analysis
-  public analyzeBehavior(occupancyReadings: SensorReading[], timeWindow: number = 7): any {
-    if (occupancyReadings.length === 0) return null;
-
-    const dailyPatterns = this.groupReadingsByDay(occupancyReadings);
-    const weeklyPattern = this.calculateWeeklyPattern(dailyPatterns);
-    
     return {
-      averageOccupancyHours: this.calculateAverageOccupancyHours(dailyPatterns),
-      peakOccupancyTimes: this.findPeakOccupancyTimes(weeklyPattern),
-      occupancyTrends: this.analyzeOccupancyTrends(dailyPatterns),
-      weekendVsWeekday: this.compareWeekendVsWeekday(dailyPatterns)
+      trend: trend.direction,
+      seasonality: seasonality.hasSeasonality,
+      cyclePeriod: seasonality.period,
+      forecast,
+      confidence: Math.min(0.9, 0.5 + (readings.length / 1000))
     };
   }
 
-  // Helper methods
+  private calculateTrend(values: number[], timestamps: number[]) {
+    // Linear regression to find trend
+    const n = values.length;
+    const sumX = timestamps.reduce((a, b) => a + b, 0);
+    const sumY = values.reduce((a, b) => a + b, 0);
+    const sumXY = timestamps.reduce((sum, x, i) => sum + x * values[i], 0);
+    const sumXX = timestamps.reduce((sum, x) => sum + x * x, 0);
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    
+    let direction: 'increasing' | 'decreasing' | 'stable' = 'stable';
+    if (Math.abs(slope) > 0.001) {
+      direction = slope > 0 ? 'increasing' : 'decreasing';
+    }
+
+    return { slope, direction };
+  }
+
+  private detectSeasonality(values: number[]) {
+    // Simple autocorrelation for common periods (hourly, daily, weekly)
+    const periods = [24, 168]; // 24 hours, 7 days
+    let maxCorrelation = 0;
+    let bestPeriod = 0;
+
+    for (const period of periods) {
+      if (values.length > period * 2) {
+        const correlation = this.calculateAutocorrelation(values, period);
+        if (correlation > maxCorrelation) {
+          maxCorrelation = correlation;
+          bestPeriod = period;
+        }
+      }
+    }
+
+    return {
+      hasSeasonality: maxCorrelation > 0.3,
+      period: bestPeriod,
+      strength: maxCorrelation
+    };
+  }
+
+  private calculateAutocorrelation(values: number[], lag: number): number {
+    if (values.length <= lag) return 0;
+
+    const n = values.length - lag;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    
+    let numerator = 0;
+    let denominator = 0;
+
+    for (let i = 0; i < n; i++) {
+      numerator += (values[i] - mean) * (values[i + lag] - mean);
+    }
+
+    for (let i = 0; i < values.length; i++) {
+      denominator += Math.pow(values[i] - mean, 2);
+    }
+
+    return denominator === 0 ? 0 : numerator / denominator;
+  }
+
+  private generateForecast(values: number[], trend: any, periods: number): number[] {
+    const forecast: number[] = [];
+    const recentValues = values.slice(-24); // Last 24 values
+    const movingAverage = recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
+
+    for (let i = 1; i <= periods; i++) {
+      // Simple forecast: moving average + trend
+      const trendComponent = trend.slope * i * 3600000; // Hourly trend
+      const forecastValue = movingAverage + trendComponent;
+      forecast.push(Math.max(0, forecastValue));
+    }
+
+    return forecast;
+  }
+
+  // ⚡ ENERGY OPTIMIZATION
+  public async generateOptimizationRecommendations(
+    sensors: Sensor[], 
+    readings: SensorReading[]
+  ): Promise<OptimizationRecommendation[]> {
+    const recommendations: OptimizationRecommendation[] = [];
+
+    // Energy consumption analysis
+    const energySensors = sensors.filter(s => s.type === 'energy');
+    for (const sensor of energySensors) {
+      const sensorReadings = readings.filter(r => r.sensorId === sensor.id);
+      const energyRecs = this.analyzeEnergyUsage(sensor, sensorReadings);
+      recommendations.push(...energyRecs);
+    }
+
+    // Environmental optimization
+    const tempSensors = sensors.filter(s => s.type === 'temperature');
+    for (const sensor of tempSensors) {
+      const sensorReadings = readings.filter(r => r.sensorId === sensor.id);
+      const tempRecs = this.analyzeTemperatureEfficiency(sensor, sensorReadings);
+      recommendations.push(...tempRecs);
+    }
+
+    return recommendations.sort((a, b) => b.impact - a.impact);
+  }
+
+  private analyzeEnergyUsage(sensor: Sensor, readings: SensorReading[]): OptimizationRecommendation[] {
+    if (readings.length < 24) return [];
+
+    const recommendations: OptimizationRecommendation[] = [];
+    const hourlyUsage = this.groupReadingsByHour(readings);
+    
+    // Peak usage analysis
+    const peakHours = this.findPeakUsageHours(hourlyUsage);
+    if (peakHours.length > 0) {
+      recommendations.push({
+        type: 'energy',
+        description: `High energy usage detected during ${peakHours.join(', ')}. Consider load shifting to off-peak hours.`,
+        impact: 0.8,
+        effort: 'medium',
+        savings: this.calculatePotentialSavings(hourlyUsage, peakHours)
+      });
+    }
+
+    // Baseline consumption
+    const baselineUsage = this.calculateBaselineUsage(readings);
+    const currentAverage = readings.reduce((sum, r) => sum + r.value, 0) / readings.length;
+    
+    if (currentAverage > baselineUsage * 1.2) {
+      recommendations.push({
+        type: 'energy',
+        description: 'Energy consumption is 20% above baseline. Check for inefficient equipment or processes.',
+        impact: 0.9,
+        effort: 'high',
+        savings: (currentAverage - baselineUsage) * 24 * 30 // Monthly savings
+      });
+    }
+
+    return recommendations;
+  }
+
+  private analyzeTemperatureEfficiency(sensor: Sensor, readings: SensorReading[]): OptimizationRecommendation[] {
+    if (readings.length < 24) return [];
+
+    const recommendations: OptimizationRecommendation[] = [];
+    const avgTemp = readings.reduce((sum, r) => sum + r.value, 0) / readings.length;
+    
+    // HVAC optimization
+    if (avgTemp > 24) {
+      recommendations.push({
+        type: 'energy',
+        description: `Average temperature is ${avgTemp.toFixed(1)}°C. Reducing by 1°C could save 6-8% on cooling costs.`,
+        impact: 0.7,
+        effort: 'low',
+        savings: 0.07 * 1000 // Estimated monthly savings
+      });
+    }
+
+    // Temperature stability
+    const tempVariance = this.calculateVariance(readings.map(r => r.value));
+    if (tempVariance > 4) {
+      recommendations.push({
+        type: 'performance',
+        description: 'High temperature variance detected. Improve insulation or HVAC control for better efficiency.',
+        impact: 0.6,
+        effort: 'medium',
+        savings: 0.05 * 1000
+      });
+    }
+
+    return recommendations;
+  }
+
+  // 🛠️ UTILITY FUNCTIONS
+  private calculateReadingFrequency(readings: SensorReading[]): number {
+    if (readings.length < 2) return 0;
+    
+    const intervals = [];
+    for (let i = 1; i < readings.length; i++) {
+      const interval = new Date(readings[i].timestamp).getTime() - new Date(readings[i-1].timestamp).getTime();
+      intervals.push(interval);
+    }
+    
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const expectedInterval = 5 * 60 * 1000; // 5 minutes
+    
+    return Math.min(1, expectedInterval / avgInterval);
+  }
+
+  private calculateQualityTrend(readings: SensorReading[]): number {
+    const qualityScores = readings.map(r => {
+      switch (r.quality) {
+        case 'excellent': return 4;
+        case 'good': return 3;
+        case 'moderate': return 2;
+        case 'poor': return 1;
+        default: return 3;
+      }
+    });
+
+    if (qualityScores.length < 2) return 0;
+
+    // Simple linear trend
+    const firstHalf = qualityScores.slice(0, Math.floor(qualityScores.length / 2));
+    const secondHalf = qualityScores.slice(Math.floor(qualityScores.length / 2));
+    
+    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    
+    return (secondAvg - firstAvg) / firstAvg;
+  }
+
+  private calculateValueDrift(readings: SensorReading[]): number {
+    if (readings.length < 10) return 0;
+    
+    const values = readings.map(r => r.value);
+    const firstQuarter = values.slice(0, Math.floor(values.length / 4));
+    const lastQuarter = values.slice(-Math.floor(values.length / 4));
+    
+    const firstAvg = firstQuarter.reduce((a, b) => a + b, 0) / firstQuarter.length;
+    const lastAvg = lastQuarter.reduce((a, b) => a + b, 0) / lastQuarter.length;
+    
+    return Math.abs(lastAvg - firstAvg) / firstAvg;
+  }
+
+  private calculateBatteryDecline(sensor: Sensor, readings: SensorReading[]): number {
+    // This would typically come from sensor metadata
+    // For now, simulate based on sensor age and reading frequency
+    const sensorAge = this.calculateSensorAge(sensor);
+    const readingFreq = this.calculateReadingFrequency(readings);
+    
+    return Math.max(0, (sensorAge / 365) * 0.1 + (1 - readingFreq) * 0.05);
+  }
+
+  private calculateSensorAge(sensor: Sensor): number {
+    const now = new Date();
+    const created = new Date(sensor.calibrationDate);
+    return Math.floor((now.getTime() - created.getTime()) / (24 * 60 * 60 * 1000));
+  }
+
+  private daysSinceCalibration(sensor: Sensor): number {
+    const now = new Date();
+    const calibration = new Date(sensor.calibrationDate);
+    return Math.floor((now.getTime() - calibration.getTime()) / (24 * 60 * 60 * 1000));
+  }
+
+  private groupReadingsByHour(readings: SensorReading[]): Map<number, number[]> {
+    const hourlyData = new Map<number, number[]>();
+    
+    readings.forEach(reading => {
+      const hour = new Date(reading.timestamp).getHours();
+      if (!hourlyData.has(hour)) {
+        hourlyData.set(hour, []);
+      }
+      hourlyData.get(hour)!.push(reading.value);
+    });
+    
+    return hourlyData;
+  }
+
+  private findPeakUsageHours(hourlyUsage: Map<number, number[]>): string[] {
+    const hourlyAverages = new Map<number, number>();
+    
+    hourlyUsage.forEach((values, hour) => {
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      hourlyAverages.set(hour, avg);
+    });
+    
+    const sortedHours = Array.from(hourlyAverages.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([hour]) => `${hour}:00`);
+    
+    return sortedHours;
+  }
+
+  private calculateBaselineUsage(readings: SensorReading[]): number {
+    // Use 10th percentile as baseline
+    const sortedValues = readings.map(r => r.value).sort((a, b) => a - b);
+    const index = Math.floor(sortedValues.length * 0.1);
+    return sortedValues[index];
+  }
+
+  private calculatePotentialSavings(hourlyUsage: Map<number, number[]>, peakHours: string[]): number {
+    // Simplified savings calculation
+    return peakHours.length * 50; // $50 per peak hour optimized
+  }
+
   private calculateVariance(values: number[]): number {
-    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-    return values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const squaredDiffs = values.map(value => Math.pow(value - mean, 2));
+    return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
   }
 
-  private getMaintenanceReasons(sensor: Sensor, variance: number, avgValue: number): string[] {
-    const reasons: string[] = [];
-    
-    if (sensor.batteryLevel && sensor.batteryLevel < 20) {
-      reasons.push('Low battery level');
-    }
-    
-    if (variance > avgValue * 0.3) {
-      reasons.push('High reading variance detected');
-    }
-    
-    const daysSinceCalibration = Math.floor(
-      (Date.now() - sensor.calibrationDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    
-    if (daysSinceCalibration > 90) {
-      reasons.push('Calibration overdue');
-    }
-    
-    return reasons;
-  }
+  // 📊 PUBLIC API METHODS
+  public async runAllPredictions(sensors: Sensor[]): Promise<Prediction[]> {
+    const predictions: Prediction[] = [];
 
-  private calculateHourlyAverages(readings: SensorReading[]): { [hour: number]: number } {
-    const hourlyData: { [hour: number]: number[] } = {};
-    
-    readings.forEach(reading => {
-      const hour = reading.timestamp.getHours();
-      if (!hourlyData[hour]) {
-        hourlyData[hour] = [];
+    for (const sensor of sensors) {
+      try {
+        // Get recent readings for this sensor
+        const readings = await this.getRecentReadings(sensor.id);
+        
+        if (readings.length > 0) {
+          // Run maintenance prediction
+          const maintenance = await this.predictMaintenance(sensor, readings);
+          if (maintenance.needsMaintenance) {
+            predictions.push({
+              id: `maintenance-${sensor.id}-${Date.now()}`,
+              modelId: 'predictive-maintenance-v1',
+              sensorId: sensor.id,
+              type: 'maintenance',
+              prediction: maintenance,
+              confidence: maintenance.confidence,
+              timestamp: new Date(),
+              validUntil: new Date(Date.now() + maintenance.estimatedDays * 24 * 60 * 60 * 1000)
+            });
+          }
+
+          // Run anomaly detection
+          const anomalies = await this.detectAnomalies(sensor.id, readings);
+          anomalies.forEach(anomaly => {
+            if (anomaly.isAnomaly) {
+              predictions.push({
+                id: `anomaly-${sensor.id}-${Date.now()}`,
+                modelId: 'anomaly-detection-v1',
+                sensorId: sensor.id,
+                type: 'anomaly',
+                prediction: anomaly,
+                confidence: anomaly.confidence,
+                timestamp: new Date(),
+                validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+              });
+            }
+          });
+
+          // Run pattern analysis
+          const patterns = await this.analyzePatterns(sensor.id, readings);
+          if (patterns.confidence > 0.5) {
+            predictions.push({
+              id: `pattern-${sensor.id}-${Date.now()}`,
+              modelId: 'pattern-recognition-v1',
+              sensorId: sensor.id,
+              type: 'pattern',
+              prediction: patterns,
+              confidence: patterns.confidence,
+              timestamp: new Date(),
+              validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error running predictions for sensor ${sensor.id}:`, error);
       }
-      hourlyData[hour].push(reading.value);
-    });
-
-    const hourlyAverages: { [hour: number]: number } = {};
-    Object.keys(hourlyData).forEach(hour => {
-      const hourNum = parseInt(hour);
-      const values = hourlyData[hourNum];
-      hourlyAverages[hourNum] = values.reduce((sum, val) => sum + val, 0) / values.length;
-    });
-
-    return hourlyAverages;
-  }
-
-  private identifyPatterns(hourlyAverages: { [hour: number]: number }): string[] {
-    const patterns: string[] = [];
-    const hours = Object.keys(hourlyAverages).map(h => parseInt(h)).sort((a, b) => a - b);
-    
-    // Check for morning peak
-    const morningHours = hours.filter(h => h >= 6 && h <= 10);
-    const morningAvg = morningHours.reduce((sum, h) => sum + hourlyAverages[h], 0) / morningHours.length;
-    
-    // Check for evening peak
-    const eveningHours = hours.filter(h => h >= 17 && h <= 21);
-    const eveningAvg = eveningHours.reduce((sum, h) => sum + hourlyAverages[h], 0) / eveningHours.length;
-    
-    const overallAvg = hours.reduce((sum, h) => sum + hourlyAverages[h], 0) / hours.length;
-    
-    if (morningAvg > overallAvg * 1.2) {
-      patterns.push('Morning peak detected');
     }
-    
-    if (eveningAvg > overallAvg * 1.2) {
-      patterns.push('Evening peak detected');
+
+    // Run optimization recommendations
+    try {
+      const allReadings = await this.getAllRecentReadings();
+      const optimizations = await this.generateOptimizationRecommendations(sensors, allReadings);
+      
+      optimizations.forEach(opt => {
+        predictions.push({
+          id: `optimization-${Date.now()}-${Math.random()}`,
+          modelId: 'optimization-v1',
+          sensorId: 'system',
+          type: 'optimization',
+          prediction: opt,
+          confidence: opt.impact,
+          timestamp: new Date(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        });
+      });
+    } catch (error) {
+      console.error('Error generating optimization recommendations:', error);
     }
-    
-    return patterns;
+
+    this.predictions = predictions;
+    return predictions;
   }
 
-  private findPeakHours(hourlyAverages: { [hour: number]: number }): number[] {
-    const hours = Object.keys(hourlyAverages).map(h => parseInt(h));
-    const maxValue = Math.max(...hours.map(h => hourlyAverages[h]));
-    return hours.filter(h => hourlyAverages[h] >= maxValue * 0.9);
+  private async getRecentReadings(sensorId: string): Promise<SensorReading[]> {
+    try {
+      const response = await apiService.getSensorReadings(sensorId, {
+        limit: 168, // 7 days of hourly data
+        from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      });
+      return response.readings || [];
+    } catch (error) {
+      console.error(`Error fetching readings for sensor ${sensorId}:`, error);
+      return [];
+    }
   }
 
-  private analyzeTrends(readings: SensorReading[]): string {
-    if (readings.length < 10) return 'Insufficient data';
-    
-    const recentReadings = readings.slice(-10);
-    const firstHalf = recentReadings.slice(0, 5);
-    const secondHalf = recentReadings.slice(5);
-    
-    const firstAvg = firstHalf.reduce((sum, r) => sum + r.value, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, r) => sum + r.value, 0) / secondHalf.length;
-    
-    const change = ((secondAvg - firstAvg) / firstAvg) * 100;
-    
-    if (Math.abs(change) < 5) return 'Stable';
-    return change > 0 ? 'Increasing' : 'Decreasing';
+  private async getAllRecentReadings(): Promise<SensorReading[]> {
+    try {
+      // This would need to be implemented in the API
+      // For now, return empty array
+      return [];
+    } catch (error) {
+      console.error('Error fetching all recent readings:', error);
+      return [];
+    }
   }
 
-  private detectSeasonality(readings: SensorReading[]): string {
-    // Simplified seasonality detection
-    const dayOfYear = new Date().getDay();
-    return dayOfYear < 3 ? 'Early week pattern' : 'Late week pattern';
-  }
-
-  private calculateOptimizations(energyPattern: any, occupancyPattern: any): any {
-    const currentUsage = Object.values(energyPattern).reduce((sum: number, val: any) => sum + val, 0);
-    const optimizedUsage = currentUsage * 0.85; // Assume 15% optimization potential
-    
-    return {
-      optimizedUsage,
-      potentialSavings: currentUsage - optimizedUsage,
-      recommendations: [
-        'Reduce lighting during low occupancy hours',
-        'Optimize HVAC scheduling based on occupancy patterns',
-        'Implement smart power management for equipment'
-      ]
-    };
-  }
-
-  private groupReadingsByDay(readings: SensorReading[]): any {
-    const dailyData: any = {};
-    
-    readings.forEach(reading => {
-      const day = reading.timestamp.toDateString();
-      if (!dailyData[day]) {
-        dailyData[day] = [];
-      }
-      dailyData[day].push(reading);
-    });
-    
-    return dailyData;
-  }
-
-  private calculateWeeklyPattern(dailyPatterns: any): any {
-    // Simplified weekly pattern calculation
-    return Object.keys(dailyPatterns).reduce((pattern, day) => {
-      const dayOfWeek = new Date(day).getDay();
-      if (!pattern[dayOfWeek]) {
-        pattern[dayOfWeek] = [];
-      }
-      pattern[dayOfWeek].push(...dailyPatterns[day]);
-      return pattern;
-    }, {});
-  }
-
-  private calculateAverageOccupancyHours(dailyPatterns: any): number {
-    const days = Object.keys(dailyPatterns);
-    if (days.length === 0) return 0;
-    
-    const totalHours = days.reduce((sum, day) => {
-      const occupiedReadings = dailyPatterns[day].filter((r: SensorReading) => r.value > 0);
-      return sum + occupiedReadings.length;
-    }, 0);
-    
-    return totalHours / days.length;
-  }
-
-  private findPeakOccupancyTimes(weeklyPattern: any): number[] {
-    // Simplified peak time detection
-    return [9, 14, 16]; // 9 AM, 2 PM, 4 PM
-  }
-
-  private analyzeOccupancyTrends(dailyPatterns: any): string {
-    const days = Object.keys(dailyPatterns).sort();
-    if (days.length < 3) return 'Insufficient data';
-    
-    const recentDays = days.slice(-3);
-    const occupancyRates = recentDays.map(day => {
-      const readings = dailyPatterns[day];
-      const occupiedReadings = readings.filter((r: SensorReading) => r.value > 0);
-      return occupiedReadings.length / readings.length;
-    });
-    
-    const trend = occupancyRates[2] - occupancyRates[0];
-    return trend > 0.1 ? 'Increasing' : trend < -0.1 ? 'Decreasing' : 'Stable';
-  }
-
-  private compareWeekendVsWeekday(dailyPatterns: any): any {
-    const weekdays: any[] = [];
-    const weekends: any[] = [];
-    
-    Object.keys(dailyPatterns).forEach(day => {
-      const dayOfWeek = new Date(day).getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        weekends.push(...dailyPatterns[day]);
-      } else {
-        weekdays.push(...dailyPatterns[day]);
-      }
-    });
-    
-    const weekdayOccupancy = weekdays.filter(r => r.value > 0).length / weekdays.length;
-    const weekendOccupancy = weekends.filter(r => r.value > 0).length / weekends.length;
-    
-    return {
-      weekdayOccupancy: weekdayOccupancy * 100,
-      weekendOccupancy: weekendOccupancy * 100,
-      difference: (weekdayOccupancy - weekendOccupancy) * 100
-    };
-  }
-
-  private createEmptyPrediction(modelId: string, sensorId: string, type: string): Prediction {
-    return {
-      id: `empty-${Date.now()}`,
-      modelId,
-      sensorId,
-      type,
-      prediction: { message: 'Insufficient data for analysis' },
-      confidence: 0,
-      timestamp: new Date(),
-      validUntil: new Date(Date.now() + 60 * 60 * 1000)
-    };
-  }
-
-  // Public API methods
-  public getAllModels(): AIModel[] {
+  public getModels(): AIModel[] {
     return Array.from(this.models.values());
   }
 
-  public getModelById(id: string): AIModel | undefined {
-    return this.models.get(id);
-  }
-
-  public getPredictions(sensorId?: string, type?: string): Prediction[] {
-    let filteredPredictions = this.predictions;
-    
-    if (sensorId) {
-      filteredPredictions = filteredPredictions.filter(p => p.sensorId === sensorId);
-    }
-    
-    if (type) {
-      filteredPredictions = filteredPredictions.filter(p => p.type === type);
-    }
-    
-    return filteredPredictions
-      .filter(p => p.validUntil > new Date())
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  public getPredictions(): Prediction[] {
+    return this.predictions;
   }
 
   public getModelStatistics() {
-    const models = this.getAllModels();
-    const activeModels = models.filter(m => m.status === 'active').length;
-    const averageAccuracy = models.reduce((sum, m) => sum + m.accuracy, 0) / models.length;
-    const totalPredictions = this.predictions.length;
-    const validPredictions = this.predictions.filter(p => p.validUntil > new Date()).length;
-
+    const models = this.getModels();
     return {
       totalModels: models.length,
-      activeModels,
-      averageAccuracy: Math.round(averageAccuracy * 100),
-      totalPredictions,
-      validPredictions
+      activeModels: models.filter(m => m.status === 'active').length,
+      averageAccuracy: models.reduce((sum, m) => sum + m.accuracy, 0) / models.length,
+      lastTraining: Math.max(...models.map(m => m.lastTraining.getTime()))
     };
   }
 }

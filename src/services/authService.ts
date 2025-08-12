@@ -1,4 +1,5 @@
 import { securityService } from './securityService';
+import { apiService } from './apiService';
 
 export interface User {
   id: string;
@@ -78,23 +79,21 @@ class AuthService {
   // Authentication Methods
   public async login(email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock authentication logic
-      if (email === 'admin@ecoguard.pro' && password === 'password123') {
+      const response = await apiService.login(email, password);
+      
+      if (response.user && response.tokens) {
         const user: User = {
-          id: '1',
-          email,
-          firstName: 'Admin',
-          lastName: 'User',
-          organization: 'EcoGuard Pro',
-          role: 'admin',
+          id: response.user.id,
+          email: response.user.email,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          organization: response.user.organization,
+          role: response.user.role,
           avatar: null,
-          createdAt: new Date('2024-01-01'),
+          createdAt: new Date(response.user.createdAt),
           lastLogin: new Date(),
           isEmailVerified: true,
-          preferences: {
+          preferences: response.user.preferences || {
             theme: 'auto',
             language: 'en',
             timezone: 'UTC-8',
@@ -118,8 +117,9 @@ class AuthService {
         securityService.logAction('failed_login_attempt', { email });
         return { success: false, error: 'Invalid email or password' };
       }
-    } catch (error) {
-      return { success: false, error: 'An error occurred during login' };
+    } catch (error: any) {
+      securityService.logAction('failed_login_attempt', { email });
+      return { success: false, error: error.message || 'An error occurred during login' };
     }
   }
 

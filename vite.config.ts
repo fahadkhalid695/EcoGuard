@@ -8,4 +8,18 @@ export default defineConfig({
     exclude: ['lucide-react'],
     include: ['crypto-js', 'recharts', 'react-speech-kit']
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/ws': {
+        target: 'ws://localhost:8080',
+        ws: true,
+        changeOrigin: true,
+      }
+    }
+  }
 });
