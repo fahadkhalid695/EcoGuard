@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
-    include: ['crypto-js', 'recharts', 'react-speech-kit']
+    include: ['crypto-js', 'recharts']
   },
   server: {
     proxy: {

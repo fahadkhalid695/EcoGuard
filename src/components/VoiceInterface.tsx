@@ -1,8 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
-import { useSpeechSynthesis, useSpeechRecognition } from 'react-speech-kit';
 import { sensorService } from '../services/sensorService';
 import { aiService } from '../services/aiService';
+
+// Custom speech synthesis hook
+const useSpeechSynthesis = () => {
+  const [speaking, setSpeaking] = useState(false);
+
+  const speak = useCallback((options: { text: string }) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(options.text);
+      utterance.onstart = () => setSpeaking(true);
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => setSpeaking(false);
+      speechSynthesis.speak(utterance);
+    }
+  }, []);
+
+  const cancel = useCallback(() => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      setSpeaking(false);
+    }
+  }, []);
+
+  return { speak, cancel, speaking };
+};
+
+// Custom speech recognition hook
+const useSpeechRecognition = (options: { 
+  onResult: (result: string) => void;
+  onEnd: () => void;
+}) => {
+  const [listening, setListening] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
+  const [supported, setSupported] = useState(false);
+
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = false;
+      recognitionInstance.lang = 'en-US';
+
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        options.onResult(transcript);
+      };
+
+      recognitionInstance.onstart = () => setListening(true);
+      recognitionInstance.onend = () => {
+        setListening(false);
+        options.onEnd();
+      };
+      recognitionInstance.onerror = () => {
+        setListening(false);
+        options.onEnd();
+      };
+
+      setRecognition(recognitionInstance);
+      setSupported(true);
+    } else {
+      setSupported(false);
+    }
+  }, [options]);
+
+  const listen = useCallback(() => {
+    if (recognition && supported) {
+      recognition.start();
+    }
+  }, [recognition, supported]);
+
+  const stop = useCallback(() => {
+    if (recognition) {
+      recognition.stop();
+    }
+  }, [recognition]);
+
+  return { listen, stop, supported };
+};
 
 const VoiceInterface: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
