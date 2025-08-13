@@ -121,7 +121,7 @@ server.listen(PORT, () => {
   console.log(`🚀 EcoGuard Pro API Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 API Base URL: http://localhost:${PORT}/api/${API_VERSION}`);
-  console.log(`🌐 WebSocket Server: ws://localhost:${process.env.WEBSOCKET_PORT || 8080}`);
+  console.log(`🌐 WebSocket Server: ws://localhost:${PORT}`);
 });
 
 module.exports = app;
