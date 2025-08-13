@@ -1,19 +1,30 @@
 FROM node:18-alpine
 
+# Install curl for health check
+RUN apk add --no-cache curl
+
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package.json first
+COPY package.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Generate package-lock.json and install dependencies
+RUN npm install --only=production && npm cache clean --force
 
 # Copy source code
 COPY . .
 
 # Create logs directory
 RUN mkdir -p logs
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
 # Expose ports
 EXPOSE 3001 8080
