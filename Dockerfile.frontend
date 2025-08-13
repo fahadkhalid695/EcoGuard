@@ -13,15 +13,20 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Copy Docker environment file
+COPY .env.docker .env
+
 # Set build arguments
 ARG VITE_API_URL=http://localhost:3001/api/v1
-ARG VITE_WEBSOCKET_URL=ws://localhost:8080
+ARG VITE_WEBSOCKET_URL=ws://localhost:3001
 ARG VITE_ENABLE_WEBSOCKETS=true
+ARG VITE_DEMO_MODE=true
 
 # Set environment variables for build
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL
 ENV VITE_ENABLE_WEBSOCKETS=$VITE_ENABLE_WEBSOCKETS
+ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 
 # Build the application
 RUN npm run build
