@@ -13,10 +13,20 @@ class WebSocketService {
 
   private connect() {
     const token = localStorage.getItem('ecoguard_token');
-    const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080';
+    const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3001';
+    const enableWebSockets = import.meta.env.VITE_ENABLE_WEBSOCKETS === 'true';
+    const demoMode = import.meta.env.VITE_DEMO_MODE === 'true';
+
+    // Skip WebSocket connection in demo mode or if disabled
+    if (demoMode || !enableWebSockets) {
+      console.log('WebSocket connection skipped (demo mode or disabled)');
+      this.simulateMockConnection();
+      return;
+    }
 
     if (!token) {
       console.log('No auth token found, WebSocket connection skipped');
+      this.simulateMockConnection();
       return;
     }
 
@@ -28,13 +38,54 @@ class WebSocketService {
         transports: ['websocket'],
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: 1000
+        reconnectionDelay: 1000,
+        timeout: 5000
       });
 
       this.setupEventHandlers();
     } catch (error) {
       console.error('Failed to initialize WebSocket connection:', error);
+      this.simulateMockConnection();
     }
+  }
+
+  private simulateMockConnection() {
+    console.log('🔄 Using mock WebSocket data for demo');
+    this.isConnected = false;
+    
+    // Simulate connection status for demo
+    setTimeout(() => {
+      this.emit('connection_status', { connected: false, demo: true });
+    }, 100);
+
+    // Simulate some mock data periodically
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      this.startMockDataSimulation();
+    }
+  }
+
+  private startMockDataSimulation() {
+    // Simulate sensor readings every 5 seconds
+    setInterval(() => {
+      const mockReading = {
+        sensorId: 'demo-sensor-001',
+        type: 'temperature',
+        value: 20 + Math.random() * 10,
+        unit: '°C',
+        timestamp: new Date().toISOString(),
+        location: 'Demo Location'
+      };
+      this.emit('sensor_reading', mockReading);
+    }, 5000);
+
+    // Simulate status updates
+    setTimeout(() => {
+      this.emit('sensor_status', {
+        sensorId: 'demo-sensor-001',
+        status: 'online',
+        batteryLevel: 85
+      });
+    }, 2000);
   }
 
   private setupEventHandlers() {

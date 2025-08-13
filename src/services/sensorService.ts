@@ -32,7 +32,8 @@ class SensorService {
     }
 
     try {
-      this.websocket = new WebSocket('ws://localhost:8080/sensors');
+      const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3001';
+      this.websocket = new WebSocket(`${wsUrl}/sensors`);
       this.connectionAttempts++;
       
       this.websocket.onopen = () => {

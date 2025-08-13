@@ -3,18 +3,18 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
+# Copy Docker environment file first
+COPY .env.docker .env
+
 # Copy package files and npm config
 COPY package*.json ./
 COPY .npmrc ./
 
 # Install dependencies with legacy peer deps
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
-
-# Copy Docker environment file
-COPY .env.docker .env
 
 # Set build arguments
 ARG VITE_API_URL=http://localhost:3001/api/v1
@@ -28,8 +28,18 @@ ENV VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL
 ENV VITE_ENABLE_WEBSOCKETS=$VITE_ENABLE_WEBSOCKETS
 ENV VITE_DEMO_MODE=$VITE_DEMO_MODE
 
-# Build the application
-RUN npm run build
+# Debug: Show environment variables
+RUN echo "Build environment:" && \
+    echo "VITE_API_URL=$VITE_API_URL" && \
+    echo "VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL" && \
+    echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
+
+# Build the application with verbose output
+RUN npm run build && \
+    echo "Build completed. Contents of dist:" && \
+    ls -la dist/ && \
+    echo "Total files in dist:" && \
+    find dist -type f | wc -l
 
 # Production stage
 FROM nginx:alpine
