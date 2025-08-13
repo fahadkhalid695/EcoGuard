@@ -50,21 +50,30 @@ services:
       MQTT_BROKER_HOST: mqtt
       MQTT_BROKER_PORT: 1883
       WEBSOCKET_PORT: 3001
+      CORS_ORIGIN: http://localhost
+      WEBSOCKET_CORS_ORIGIN: http://localhost
     ports:
       - "3001:3001"
     depends_on:
       - postgres
       - mqtt
+      - redis
     volumes:
-      - ./backend/logs:/app/logs
+      - ./logs:/app/logs
     networks:
       - ecoguard-network
+    restart: unless-stopped
 
   # Frontend (Nginx serving built React app)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:3001/api/v1
+        VITE_WEBSOCKET_URL: ws://localhost:3001
+        VITE_ENABLE_WEBSOCKETS: "false"
+        VITE_DEMO_MODE: "true"
     container_name: ecoguard-frontend
     ports:
       - "80:80"
@@ -74,6 +83,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
     networks:
       - ecoguard-network
 

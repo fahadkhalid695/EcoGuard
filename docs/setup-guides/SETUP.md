@@ -3,10 +3,12 @@
 ## 🚀 Quick Start (Docker - Recommended)
 
 ### Prerequisites
+
 - Docker and Docker Compose
 - Git
 
 ### 1. Clone and Start
+
 ```bash
 git clone <repository-url>
 cd ecoguard-pro
@@ -19,12 +21,14 @@ docker-compose ps
 ```
 
 ### 2. Access the Application
+
 - **Frontend**: http://localhost
 - **Backend API**: http://localhost:3001
 - **API Docs**: http://localhost:3001/health
 - **MQTT Broker**: localhost:1883
 
 ### 3. Demo Login
+
 - **Email**: demo@ecoguard.com
 - **Password**: password123
 
@@ -33,11 +37,13 @@ docker-compose ps
 ## 🛠️ Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - PostgreSQL 12+
 - MQTT Broker (optional)
 
 ### 1. Install Dependencies
+
 ```bash
 # Install all dependencies
 npm run setup
@@ -48,6 +54,7 @@ cd backend && npm install
 ```
 
 ### 2. Database Setup
+
 ```bash
 # Create database
 createdb ecoguard_pro
@@ -63,6 +70,7 @@ npm run seed
 ### 3. Environment Configuration
 
 **Frontend (.env)**:
+
 ```env
 VITE_API_URL=http://localhost:3001/api/v1
 VITE_WEBSOCKET_URL=ws://localhost:8080
@@ -70,6 +78,7 @@ VITE_ENABLE_WEBSOCKETS=true
 ```
 
 **Backend (backend/.env)**:
+
 ```env
 NODE_ENV=development
 PORT=3001
@@ -82,6 +91,7 @@ WEBSOCKET_PORT=8080
 ```
 
 ### 4. Start Development Servers
+
 ```bash
 # Start both frontend and backend
 npm run dev:full
@@ -96,6 +106,7 @@ cd backend && npm run dev      # Backend (port 3001)
 ## 📡 IoT Sensor Integration
 
 ### WiFi Sensors (ESP32/ESP8266)
+
 ```cpp
 // Example Arduino code
 #include <WiFi.h>
@@ -109,10 +120,10 @@ void sendReading(float value, String unit) {
   http.begin(apiUrl + "/readings/sensor/SENSOR_ID");
   http.addHeader("Authorization", "Bearer " + String(apiKey));
   http.addHeader("Content-Type", "application/json");
-  
+
   String payload = "{\"value\":" + String(value) + ",\"unit\":\"" + unit + "\"}";
   int httpCode = http.POST(payload);
-  
+
   if (httpCode == 201) {
     Serial.println("Reading sent successfully");
   }
@@ -121,25 +132,27 @@ void sendReading(float value, String unit) {
 ```
 
 ### LoRaWAN Integration
+
 1. Configure TTN application
 2. Set up MQTT bridge
 3. Update backend MQTT settings
 4. Deploy sensors with TTN credentials
 
 ### WebSocket Real-time
+
 ```javascript
-import { websocketService } from './services/websocketService';
+import { websocketService } from "./services/websocketService";
 
 // Listen for real-time data
-websocketService.on('sensor_reading', (data) => {
-  console.log('New reading:', data);
+websocketService.on("sensor_reading", (data) => {
+  console.log("New reading:", data);
 });
 
 // Send sensor data
-websocketService.sendReading('sensor-id', {
+websocketService.sendReading("sensor-id", {
   value: 23.5,
-  unit: '°C',
-  timestamp: new Date().toISOString()
+  unit: "°C",
+  timestamp: new Date().toISOString(),
 });
 ```
 
@@ -148,20 +161,23 @@ websocketService.sendReading('sensor-id', {
 ## 🔧 Configuration
 
 ### Database Configuration
+
 - **Development**: PostgreSQL on localhost:5432
 - **Production**: Configure connection string in environment
 - **Migrations**: Automatic on startup or manual via `npm run migrate`
 
 ### Security Configuration
+
 - **JWT Secret**: Generate strong secret for production
 - **Rate Limiting**: Configured in backend/server.js
 - **CORS**: Configure allowed origins
 - **HTTPS**: Enable SSL certificates in nginx config
 
 ### MQTT Configuration
+
 - **Broker**: Eclipse Mosquitto
 - **Authentication**: Username/password required
-- **Topics**: 
+- **Topics**:
   - `sensors/+/data` - Sensor readings
   - `alerts/+` - Alert notifications
   - `commands/+` - Sensor commands
@@ -171,6 +187,7 @@ websocketService.sendReading('sensor-id', {
 ## 🚀 Deployment
 
 ### Production Docker Deployment
+
 ```bash
 # Build and deploy
 docker-compose -f docker-compose.prod.yml up -d
@@ -184,6 +201,7 @@ docker-compose up -d
 ```
 
 ### Cloud Deployment (AWS/Azure/GCP)
+
 1. **Database**: Use managed PostgreSQL service
 2. **Container Registry**: Push images to ECR/ACR/GCR
 3. **Load Balancer**: Configure SSL termination
@@ -191,6 +209,7 @@ docker-compose up -d
 5. **Backup**: Configure automated database backups
 
 ### Environment Variables for Production
+
 ```env
 NODE_ENV=production
 DB_HOST=your-production-db-host
@@ -205,22 +224,26 @@ SSL_KEY_PATH=/path/to/key.pem
 ## 🧪 Testing
 
 ### Unit Tests
+
 ```bash
 npm test                    # Frontend tests
 cd backend && npm test      # Backend tests
 ```
 
 ### Integration Tests
+
 ```bash
 npm run test:integration    # API integration tests
 ```
 
 ### E2E Tests
+
 ```bash
 npm run test:e2e           # End-to-end tests
 ```
 
 ### Load Testing
+
 ```bash
 # Install artillery
 npm install -g artillery
@@ -234,18 +257,21 @@ artillery run tests/load-test.yml
 ## 📊 Monitoring & Maintenance
 
 ### Health Checks
+
 - **Frontend**: http://localhost/health
 - **Backend**: http://localhost:3001/health
 - **Database**: Connection status in backend logs
 - **MQTT**: Broker status via mosquitto_sub
 
 ### Logging
+
 - **Frontend**: Browser console and error tracking
 - **Backend**: File logs in backend/logs/
 - **Database**: PostgreSQL logs
 - **Nginx**: Access and error logs
 
 ### Backup Strategy
+
 ```bash
 # Database backup
 pg_dump ecoguard_pro > backup_$(date +%Y%m%d).sql
@@ -264,6 +290,7 @@ docker run --rm -v ecoguard_postgres_data:/data -v $(pwd):/backup alpine tar czf
 ### Common Issues
 
 #### Frontend not connecting to backend
+
 ```bash
 # Check backend is running
 curl http://localhost:3001/health
@@ -275,6 +302,7 @@ echo $VITE_API_URL
 ```
 
 #### Database connection issues
+
 ```bash
 # Test database connection
 psql -h localhost -U ecoguard -d ecoguard_pro
@@ -289,6 +317,7 @@ npm run seed
 ```
 
 #### WebSocket connection issues
+
 ```bash
 # Check WebSocket server
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" http://localhost:8080
@@ -300,6 +329,7 @@ localStorage.getItem('ecoguard_token')
 ```
 
 #### MQTT broker issues
+
 ```bash
 # Test MQTT connection
 mosquitto_pub -h localhost -t test -m "hello"
@@ -313,12 +343,14 @@ mosquitto_passwd -c mqtt/config/passwd username
 ```
 
 ### Performance Optimization
+
 - **Database**: Add indexes for frequently queried columns
 - **Frontend**: Enable gzip compression, optimize bundle size
 - **Backend**: Implement caching with Redis
 - **MQTT**: Optimize message frequency and payload size
 
 ### Security Checklist
+
 - [ ] Change default passwords
 - [ ] Enable HTTPS with valid certificates
 - [ ] Configure firewall rules
@@ -341,6 +373,7 @@ mosquitto_passwd -c mqtt/config/passwd username
 ## 🔄 Updates
 
 ### Updating the System
+
 ```bash
 # Pull latest changes
 git pull origin main
@@ -358,6 +391,7 @@ docker-compose up -d
 ```
 
 ### Version Management
+
 - **Frontend**: Version in package.json
 - **Backend**: Version in package.json
 - **Database**: Migration version tracking

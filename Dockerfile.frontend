@@ -3,23 +3,29 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
-# Copy Docker environment file first
-COPY .env.docker .env
-
-# Copy package files and npm config
+# Copy package files first for better caching
 COPY package*.json ./
 COPY .npmrc ./
 
 # Install dependencies with legacy peer deps
 RUN npm install --legacy-peer-deps
 
-# Copy source code
-COPY . .
+# Copy environment file
+COPY .env.docker .env
+
+# Copy source code (excluding node_modules)
+COPY src/ ./src/
+COPY public/ ./public/
+COPY index.html ./
+COPY vite.config.ts ./
+COPY tsconfig*.json ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 
 # Set build arguments
 ARG VITE_API_URL=http://localhost:3001/api/v1
 ARG VITE_WEBSOCKET_URL=ws://localhost:3001
-ARG VITE_ENABLE_WEBSOCKETS=true
+ARG VITE_ENABLE_WEBSOCKETS=false
 ARG VITE_DEMO_MODE=true
 
 # Set environment variables for build
@@ -34,12 +40,16 @@ RUN echo "Build environment:" && \
     echo "VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL" && \
     echo "VITE_DEMO_MODE=$VITE_DEMO_MODE"
 
-# Build the application with verbose output
-RUN npm run build && \
-    echo "Build completed. Contents of dist:" && \
+# Build the application
+RUN npm run build
+
+# Verify build output
+RUN echo "Build completed. Contents of dist:" && \
     ls -la dist/ && \
     echo "Total files in dist:" && \
-    find dist -type f | wc -l
+    find dist -type f | wc -l && \
+    echo "Index.html exists:" && \
+    ls -la dist/index.html
 
 # Production stage
 FROM nginx:alpine
