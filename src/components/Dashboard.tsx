@@ -258,19 +258,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, isDarkMode }) => {
           <Settings className="w-5 h-5" />
         </button>
         
-        {/* Bolt Logo */}
-        <a 
-          href="https://bolt.new/" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="absolute bottom-4 right-4 transition-transform hover:scale-110 z-20"
-        >
-          <img 
-            src="/white_circle_360x360.png" 
-            alt="Built with Bolt" 
-            className="h-12 w-12"
-          />
-        </a>
+
       </div>
 
       {/* Customization Panel */}

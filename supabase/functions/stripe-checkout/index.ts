@@ -21,7 +21,7 @@ if (!stripeSecret) {
 
 const stripe = new Stripe(stripeSecret!, {
   appInfo: {
-    name: 'Bolt Integration',
+    name: 'EcoGuard Pro',
     version: '1.0.0',
   },
 });

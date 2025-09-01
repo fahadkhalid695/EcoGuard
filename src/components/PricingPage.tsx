@@ -451,21 +451,7 @@ const PricingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Powered by Bolt */}
-        <div className="mt-16 text-center">
-          <a 
-            href="https://bolt.new/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-block transition-transform hover:scale-105"
-          >
-            <img 
-              src="/white_circle_360x360.png" 
-              alt="Powered by Bolt" 
-              className="h-10 w-auto"
-            />
-          </a>
-        </div>
+
       </div>
     </div>
   );

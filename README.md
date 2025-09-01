@@ -935,8 +935,6 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 [⬆️ Back to Top](#-ecoguard-pro---ai-powered-environmental-monitoring-system)
 
-<a href="https://bolt.new/" target="_blank" rel="noopener noreferrer">
-  <img src="/white_circle_360x360.png" alt="Built with Bolt" width="120" />
-</a>
+
 
 </div>

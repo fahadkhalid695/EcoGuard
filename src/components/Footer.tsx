@@ -259,7 +259,7 @@ const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
             </div>
 
             <div className="text-sm text-slate-400 text-center lg:text-right">
-              Version 1.0.0 | <a href="https://bolt.new/" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors duration-200">Built with Bolt</a>
+              Version 1.0.0
             </div>
           </div>
         </div>
